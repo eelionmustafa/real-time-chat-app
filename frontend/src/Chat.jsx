@@ -1,43 +1,29 @@
-import React, { useState, useEffect } from "react";
-import io from "socket.io-client";
+const API_URL = "http://localhost:5000/api"; // Updated API prefix
 
-const socket = io("http://localhost:5000");
-
-const Chat = () => {
-  const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState([]);
-
-  useEffect(() => {
-    socket.on("receiveMessage", (message) => {
-      setMessages((prev) => [...prev, message]);
-    });
-
-    return () => {
-      socket.off("receiveMessage");
-    };
-  }, []);
-
-  const sendMessage = () => {
-    socket.emit("sendMessage", { sender: "User", content: message });
-    setMessage("");
-  };
-
-  return (
-    <div>
-      <h2>Chat</h2>
-      <div>
-        {messages.map((msg, index) => (
-          <p key={index}><strong>{msg.sender}:</strong> {msg.content}</p>
-        ))}
-      </div>
-      <input 
-        type="text" 
-        value={message} 
-        onChange={(e) => setMessage(e.target.value)} 
-      />
-      <button onClick={sendMessage}>Send</button>
-    </div>
-  );
+const handleLogin = async () => {
+  try {
+    const response = await axios.post(`${API_URL}/auth/login`, { username, password });
+    localStorage.setItem("token", response.data.token);
+    setToken(response.data.token);
+  } catch (err) {
+    console.error("Login failed:", err.response?.data?.message || err.message);
+  }
 };
 
-export default Chat;
+useEffect(() => {
+  if (!token) return;
+
+  axios
+    .get(`${API_URL}/messages`, { headers: { Authorization: `Bearer ${token}` } })
+    .then((response) => {
+      setMessages(response.data);
+    });
+
+  const socket = socketIOClient("http://localhost:5000");
+
+  socket.on("receiveMessage", (data) => {
+    setMessages((prevMessages) => [...prevMessages, data]);
+  });
+
+  return () => socket.disconnect();
+}, [token]);
